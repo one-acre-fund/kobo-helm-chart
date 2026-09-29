@@ -1,0 +1,281 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: kobo-toolbox
+  description: KoboToolbox platform deployed via the kobo-helm-chart
+  links:
+    - url: https://elastic.oneacrefund.org/app/dashboards#/view/8a39be21-c099-4297-a952-3b4dec568ecc?_g=h@e886e10
+      title: Kibana Dashboard
+      icon: dashboard
+  annotations:
+    github.com/project-slug: kobotoolbox/kobo-helm-chart
+spec:
+  owner: field-apps
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kpi
+  description: KPI web application (main KoboToolbox UI/API)
+  links:
+    - url: https://surveys.oneacrefund.org/
+      title: KPI Surveys
+      icon: web
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kpi-database
+    - resource:mongodb
+    - resource:s3-bucket
+    - resource:redis
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kobocat
+  description: KoboCat web application (form submissions/data collection API)
+  links:
+    - url: https://kc-surveys.oneacrefund.org/
+      title: KoboCat Surveys
+      icon: web
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kobocat-database
+    - resource:mongodb
+    - resource:s3-bucket
+    - resource:redis
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kpi-workers
+  description: Celery workers processing async/background tasks for KPI
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kpi-database
+    - resource:mongodb
+    - resource:s3-bucket
+    - resource:redis
+    - component:kpi
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kobocat-workers
+  description: Celery workers processing async/background tasks for KoboCat
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kobocat-database
+    - resource:mongodb
+    - resource:s3-bucket
+    - resource:redis
+    - component:kobocat
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kpi-beat
+  description: Celery beat scheduler triggering periodic KPI tasks
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kpi-database
+    - resource:mongodb
+    - resource:redis
+    - component:kpi
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kobocat-beat
+  description: Celery beat scheduler triggering periodic KoboCat tasks
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:kobocat-database
+    - resource:mongodb
+    - resource:redis
+    - component:kobocat
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: enketo
+  description: Enketo Express service for rendering and submitting web forms
+  links:
+    - url: https://ee-surveys.oneacrefund.org/
+      title: Enketo Surveys
+      icon: web
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+spec:
+  type: service
+  lifecycle: production
+  owner: field-apps
+  system: kobo-toolbox
+  dependsOn:
+    - resource:redis
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: redis
+  description: Redis instance used as cache/broker for KPI, KoboCat and Enketo
+spec:
+  type: cache
+  owner: field-apps
+  system: clif
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: mongodb
+  description: In-cluster MongoDB instance storing KPI/KoboCat form submission data
+spec:
+  type: database
+  owner: field-apps
+  system: clif
+  engine: mongodb
+  host: kobo-mongodb
+  port: 27017
+  dbname: formhub
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: kpi-database
+  description: Logical database used by KPI on the kobo-prod-01 PostgreSQL instance
+spec:
+  type: database
+  owner: field-apps
+  system: clif
+  dependsOn:
+    - resource:postgres-db
+  host: kobo-prod-01.cfg84w04uyc4.eu-west-1.rds.amazonaws.com
+  port: 5432
+  dbname: kobocat_survey
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: kobocat-database
+  description: Logical database used by KoboCat on the kobo-prod-01 PostgreSQL instance
+spec:
+  type: database
+  owner: field-apps
+  system: clif
+  dependsOn:
+    - resource:postgres-db
+  host: kobo-prod-01.cfg84w04uyc4.eu-west-1.rds.amazonaws.com
+  port: 5432
+  dbname: kobocat_survey
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: postgres-db
+  description: PostgreSQL database used by KPI and KoboCat services
+  links:
+    - url: https://952409747009-vop4omki.eu-west-1.console.aws.amazon.com/rds/home?region=eu-west-1#database:id=kobo-prod-01;is-cluster=false
+      title: AWS RDS Console
+      icon: dashboard
+  annotations:
+    amazonaws.com/arn: arn:aws:rds:eu-west-1:952409747009:db:kobo-prod-01
+    aws.amazon.com/rds-instance-id: kobo-prod-01
+    aws.amazon.com/rds-resource-id: db-RSCGXONYHZUSJRQA6AQ7JUULWU
+    aws.amazon.com/region: eu-west-1
+    aws.amazon.com/rds-endpoint: kobo-prod-01.cfg84w04uyc4.eu-west-1.rds.amazonaws.com
+  tags:
+    - postgresql
+    - rds
+    - multi-az
+spec:
+  type: database
+  owner: field-apps
+  system: clif
+  # RDS instance details (from AWS console, 2026-09-29)
+  engine: postgresql
+  engineVersion: "16.13"
+  instanceClass: db.r5.large
+  vcpu: 2
+  ramGiB: 16
+  multiAZ: true
+  secondaryZone: eu-west-1b
+  masterUsername: oafadmin
+  iamAuthentication: false
+  storageType: gp3
+  storageSizeGiB: 1500
+  provisionedIOPS: 12000
+  storageThroughputMiBps: 500
+  storageAutoscaling: false
+  encrypted: true
+  kmsKey: aws/rds
+  deletionProtection: true
+  host: kobo-prod-01.cfg84w04uyc4.eu-west-1.rds.amazonaws.com
+  port: 5432
+  dbname: postgres
+  sslMode: verify-full
+  # connect: psql "host=$RDSHOST port=5432 dbname=postgres user=oafadmin sslmode=verify-full sslrootcert=./global-bundle.pem"
+  monitoringType: database-insights-standard
+  enhancedMonitoring: false
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: s3-bucket
+  description: AWS S3 bucket used for KPI and KoboCat media/file storage
+  links:
+    - url: https://952409747009-vop4omki.eu-west-1.console.aws.amazon.com/s3/buckets/oaf-prod-kobomedia?region=eu-west-1&tab=properties
+      title: AWS S3 Console
+      icon: dashboard
+  annotations:
+    amazonaws.com/arn: arn:aws:s3:::oaf-prod-kobomedia
+    amazonaws.com/resource-name: oaf-prod-kobomedia
+    aws.amazon.com/region: eu-west-1
+  tags:
+    - s3
+    - prod
+spec:
+  type: s3-bucket
+  owner: field-apps
+  system: clif
+  # AWS tags (from console, 2026-09-29)
+  bucketName: oaf-prod-kobomedia
+  application: oaf
+  costCentre: GLB-GR
+  environment: prod
+  managedBy: terraform
+  mapMigrated: migFM25HRY5PO
