@@ -1,18 +1,4 @@
 apiVersion: backstage.io/v1alpha1
-kind: System
-metadata:
-  name: clif
-  description: KoboToolbox platform deployed via the kobo-helm-chart
-  links:
-    - url: https://elastic.oneacrefund.org/app/dashboards#/view/8a39be21-c099-4297-a952-3b4dec568ecc?_g=h@e886e10
-      title: Kibana Dashboard
-      icon: dashboard
-  annotations:
-    github.com/project-slug: kobotoolbox/kobo-helm-chart
-spec:
-  owner: field-apps
----
-apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: kpi
