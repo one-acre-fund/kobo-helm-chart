@@ -31,6 +31,8 @@ metadata:
       icon: web
   annotations:
     backstage.io/kubernetes-label-selector: app.kubernetes.io/instance=kobo
+    oaf.org/apm-dashboard-prod-url: 'https://elastic.oneacrefund.org/app/dashboards#/view/8a39be21-c099-4297-a952-3b4dec568ecc?_g=h@3a04046'
+
 spec:
   type: service
   lifecycle: production
